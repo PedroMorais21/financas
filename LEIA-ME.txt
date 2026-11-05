@@ -1,0 +1,25 @@
+FINANÇAS - Pedro Morais (versão simples)
+
+Sem servidor, sem GitHub, sem variáveis. O site é a pasta "site" e os dados ficam no Supabase.
+
+1) SUPABASE - banco de dados
+   - SQL Editor > New query > cole o conteúdo de "banco-de-dados.sql" > Run.
+2) SUPABASE - usuário de acesso
+   - Authentication > Users > Add user > Create new user
+   - Email: pedro.morais@financas.app   Senha: a sua senha
+   - Marque "Auto Confirm User" e salve.
+   - No site você entra só com: usuário "pedro.morais" e a senha.
+3) SUPABASE - chave
+   - Project Settings > API Keys > copie a chave PUBLISHABLE (sb_publishable_...). Não use a secret.
+4) PUBLICAR (Netlify)
+   - app.netlify.com > Add new site > Deploy manually.
+   - Arraste a PASTA "site" (dentro dela deve aparecer o index.html).
+5) PRIMEIRO ACESSO
+   - Abra o endereço do site. Informe a Project URL e a chave Publishable (uma única vez).
+   - Entre com usuário e senha.
+6) CELULAR
+   - No computador: menu > Configurações > "Link para outro aparelho". Copie o link e envie para você mesmo.
+   - No celular, abra o link, entre com usuário e senha e adicione à Tela de Início
+     (iPhone: Compartilhar > Adicionar à Tela de Início | Android: menu > Instalar app).
+
+Se o site já usava o mesmo projeto do Supabase, os lançamentos antigos continuam lá.

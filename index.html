@@ -127,23 +127,39 @@ h2{font-size:13px;margin:0 0 10px;color:var(--mut);font-weight:500;text-transfor
 
 <script>
 var TODAY=(function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")})();
-var AK="",AU="",TM,L,D,uid=100,S={v:"dash",m:TODAY,menu:0,cf:"",dc:"",ed:null};
-try{AK=localStorage.getItem("ak")||"";AU=localStorage.getItem("au")||""}catch(e){}
+var L,D,uid=100,TM,DIRTY=0,RP=null,S={v:"dash",m:TODAY,menu:0,cf:"",dc:"",ed:null};
 var KEYS=["ganhos","despesas","gastos","pagtos","contas","receber"];
-function api(m,b){var j=b?JSON.stringify(b):undefined;return fetch("/api/state",{method:m,cache:"no-store",keepalive:!!j&&j.length<60000,headers:{"x-app-user":AU,"x-app-key":AK,"content-type":"application/json"},body:j})}
-var DIRTY=0;
+function lj(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}}
+function sj(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+var C=lj("cfg",null),SES=lj("ses",null);
+try{if(location.hash.indexOf("#cfg=")===0){var q=atob(location.hash.slice(5)).split("|");C={u:q[0],k:q[1]};sj("cfg",C);history.replaceState(null,"",location.pathname)}}catch(e){}
+function sb(p,o){o=o||{};o.headers=Object.assign({apikey:C.k,"content-type":"application/json"},o.headers||{});o.cache="no-store";return fetch(C.u+p,o)}
+function setSes(j){SES={at:j.access_token,rt:j.refresh_token,exp:Date.now()+j.expires_in*1000};sj("ses",SES)}
+function tok(){if(!SES)return Promise.reject("nologin");if(Date.now()<SES.exp-60000)return Promise.resolve(SES.at);
+ if(!RP)RP=sb("/auth/v1/token?grant_type=refresh_token",{method:"POST",body:JSON.stringify({refresh_token:SES.rt})}).then(function(r){return r.ok?r.json():Promise.reject("nologin")}).then(function(j){setSes(j);RP=null;return SES.at},function(e){RP=null;throw e});
+ return RP}
+function chk(r){return r.ok?r:r.text().then(function(x){throw x})}
+function getState(){return tok().then(function(t){return sb("/rest/v1/app_state?id=eq.1&select=data",{headers:{Authorization:"Bearer "+t}})}).then(chk).then(function(r){return r.json()}).then(function(a){return(a[0]&&a[0].data)||{}})}
+function putState(){var j=JSON.stringify({id:1,data:{D:D,L:L},updated_at:new Date().toISOString()});return tok().then(function(t){return sb("/rest/v1/app_state",{method:"POST",keepalive:j.length<60000,headers:{Authorization:"Bearer "+t,Prefer:"resolution=merge-duplicates"},body:j})}).then(chk)}
 function toast(t){var e=$("st");if(!e)return;e.textContent=t;e.style.display=t?"block":"none"}
 function sv(){DIRTY=1;clearTimeout(TM);TM=setTimeout(push,100)}
-function push(){api("PUT",{D:D,L:L}).then(function(r){if(r.ok){DIRTY=0;toast("")}else return r.json().catch(function(){return{}}).then(function(x){toast("Não foi possível salvar: "+(x.error||r.status)+" — toque aqui para tentar de novo.")})}).catch(function(){toast("Sem conexão: alterações ainda não salvas — toque aqui para tentar de novo.")})}
+function push(){putState().then(function(){DIRTY=0;toast("")}).catch(function(e){if(e==="nologin")return login("Sessão expirada. Entre novamente.");toast("Não foi possível salvar: "+String(e).slice(0,140)+" — toque aqui para tentar de novo.")})}
 function restore(){if(S.rest)return;S.rest=1;try{var v=localStorage.getItem("lv")||"",p=v.slice(0,2);if(/^(dash|resumo|cartoes|contas|receber|cfg)$/.test(v)||(p==="f:"&&L.srcs.indexOf(v.slice(2))>=0)||(p==="c:"&&L.cards.indexOf(v.slice(2))>=0))S.v=v}catch(e){}}
 function init(x){D=x.D||{};KEYS.forEach(function(k){D[k]=D[k]||[]});L=(x.L&&x.L.cards)?x.L:{cards:["Cartão 1"],srcs:["Pessoal"]};uid=100;KEYS.forEach(function(k){D[k].forEach(function(e){if(e.id>uid)uid=e.id})});restore();render()}
-function boot(){api("GET").then(function(r){if(r.status===401){login(AK?"Usuário ou senha incorretos":"");return}
- if(!r.ok){return r.json().catch(function(){return{}}).then(function(x){$("view").innerHTML='<div class="empty">Erro no servidor.<br>'+esc(x.error||"")+'</div>'})}
- return r.json().then(init)}).catch(function(){$("view").innerHTML='<div class="empty">Sem conexão com o servidor</div>'})}
+function boot(){if(!C||!C.u||!C.k)return setup();if(!SES)return login("");
+ getState().then(init).catch(function(e){if(e==="nologin"||/JWT|expired/i.test(String(e)))return login("Entre novamente.");$("view").innerHTML='<div class="empty">Erro ao carregar.<br>'+esc(String(e).slice(0,200))+'</div>'})}
+function setup(msg){$("view").innerHTML='<div class="k"><b>Conectar ao banco de dados</b><div style="display:grid;gap:8px;margin-top:10px"><input id="cu" class="li" placeholder="Project URL" value="https://ncwxuxeqqscdccexxngp.supabase.co"><input id="ck" class="li" placeholder="Chave Publishable (sb_publishable_...)"><button class="btn" style="margin-top:0" onclick="saveCfg()">Continuar</button></div><p class="hint">'+(msg||"Informe uma única vez neste aparelho. Use a chave PUBLISHABLE, nunca a secret.")+'</p></div>'}
+function saveCfg(){var u=$("cu").value.trim().replace(/\/+$/,""),k=$("ck").value.trim(),bad=/^sb_secret_/.test(k);
+ try{bad=bad||/"role"\s*:\s*"service_role"/.test(atob(k.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")))}catch(e){}
+ if(!/^https:\/\/.+\.supabase\.co$/.test(u)||k.length<20)return setup("Confira a URL (https://….supabase.co) e a chave.");
+ if(bad)return setup("Essa é a chave SECRETA. Use a chave Publishable (sb_publishable_…).");
+ C={u:u,k:k};sj("cfg",C);boot()}
 function login(msg){$("view").innerHTML='<div class="k"><b>Entrar</b><div style="display:grid;gap:8px;margin-top:10px"><input id="us" class="li" placeholder="Usuário" autocapitalize="none" autocomplete="username"><input id="pw" class="li" type="password" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()"><button class="btn" style="margin-top:0" onclick="doLogin()">Entrar</button></div><p class="hint">'+(msg||"")+'</p></div>'}
-function doLogin(){AU=$("us").value.trim();AK=$("pw").value;try{localStorage.setItem("au",AU);localStorage.setItem("ak",AK)}catch(e){}boot()}
-function logout(){AU=AK="";D=null;try{localStorage.removeItem("au");localStorage.removeItem("ak")}catch(e){}login("")}
-document.addEventListener("visibilitychange",function(){if(!document.hidden&&D&&!DIRTY)api("GET").then(function(r){return r.ok?r.json():null}).then(function(x){if(x)init(x)}).catch(function(){})});
+function doLogin(){var u=$("us").value.trim(),p=$("pw").value;if(!u||!p)return;var em=u.indexOf("@")>0?u:u.toLowerCase()+"@financas.app";
+ sb("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email:em,password:p})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw j;return j})}).then(function(j){setSes(j);boot()}).catch(function(e){login(e&&e.error_description?"Usuário ou senha incorretos":"Não foi possível entrar. Verifique a conexão e a configuração.")})}
+function logout(){SES=null;sj("ses",null);D=null;login("")}
+function share(){prompt("Copie este link e abra no outro aparelho. Ele só configura a conexão; você ainda entra com usuário e senha:",location.origin+location.pathname+"#cfg="+btoa(C.u+"|"+C.k))}
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&D&&!DIRTY)getState().then(init).catch(function(){})});
 var $=function(i){return document.getElementById(i)};
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function R(v){return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
@@ -271,7 +287,7 @@ function render(){if(!D)return;
 
  if(v==="cfg"){
   h+='<h2>Configurações</h2><div class="sec"><span>Cartões</span></div>'+panel("cards")+'<div class="sec"><span>Empresas e fontes de renda</span></div>'+panel("srcs")
-   +'<p class="hint">Edite o nome direto na lista: ele muda em todos os lançamentos. Excluir apaga também os lançamentos ligados a ele (toque em ✕ e depois em Confirmar). Mantenha ao menos um de cada.</p><div class="cin"><button onclick="logout()">Sair da conta</button></div>';
+   +'<p class="hint">Edite o nome direto na lista: ele muda em todos os lançamentos. Excluir apaga também os lançamentos ligados a ele (toque em ✕ e depois em Confirmar). Mantenha ao menos um de cada.</p><div class="cin"><button onclick="share()">Link para outro aparelho</button><button onclick="logout()">Sair da conta</button></div>';
  }
  $("view").innerHTML=h;try{localStorage.setItem("lv",S.v)}catch(e){}
 }
