@@ -82,6 +82,45 @@ h2{font-size:13px;margin:0 0 10px;color:var(--mut);font-weight:500;text-transfor
 .btn{width:100%;margin-top:14px;padding:12px;border:0;border-radius:12px;background:var(--ac);color:var(--on);font-size:15px;font-weight:600;cursor:pointer}
 .li{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:15px}
 #st{display:none;position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));background:#3a1f1c;color:#ffd9d4;border:1px solid var(--red);border-radius:12px;padding:10px 12px;font-size:13px;z-index:50;cursor:pointer}
+/* ===== Telas médias e grandes (tablet/computador) ===== */
+@media (min-width:900px){
+  body{font-size:16px}
+  .w{max-width:960px;padding:24px 32px 110px}
+  h1{font-size:22px}
+  h2{font-size:14px;margin-bottom:14px}
+  .mn{margin:20px 0 26px}
+  .mn b{font-size:18px;min-width:220px}
+  .mn button{width:40px;height:40px}
+  .grid,.g3{gap:14px}
+  .k{padding:16px 18px}
+  .k small{font-size:13px}
+  .k b{font-size:24px}
+  .k.big{padding:20px 22px}
+  .k.big b{font-size:32px}
+  .g3 .k{padding:14px 16px}
+  .g3 .k b{font-size:20px}
+  .sec{margin:30px 0 10px;font-size:13px}
+  .row{padding:13px 16px;margin-bottom:8px}
+  .ch{height:230px;gap:8px}
+  .col span{font-size:12px}
+  .go{transition:border-color .15s,background .15s}
+  .go:hover{border-color:#3a3a3a}
+  .row.go:hover{background:#151515}
+  /* Formulário centralizado, em vez de "gaveta" no rodapé */
+  .modal{align-items:center}
+  .sheet{max-width:560px;border-radius:18px;padding:22px 24px}
+  #st{left:auto;right:24px;max-width:420px}
+}
+
+/* ===== Telas grandes: menu lateral sempre visível ===== */
+@media (min-width:1200px){
+  body{padding-left:260px}
+  .hb{display:none}
+  .dr{transform:none;width:260px;max-width:260px}
+  .ov,.ov.on{display:none}
+  .fab{right:32px;bottom:32px}
+}
+
 </style>
 </head>
 <body>
